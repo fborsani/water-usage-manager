@@ -4,9 +4,9 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui charts
 
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = assignment
 TEMPLATE = app
@@ -27,7 +27,6 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    qcustomplot.cpp \
     workerDataSearch.cpp \
     workerFileCopy.cpp \
     dataEntry.cpp \
@@ -39,7 +38,6 @@ SOURCES += main.cpp\
     winVisual.cpp
 
 HEADERS  += mainwindow.h \
-    qcustomplot.h \
     essentials.h \
     workerDataSearch.h \
     workerFileCopy.h \

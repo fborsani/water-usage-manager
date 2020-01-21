@@ -4,7 +4,11 @@
 #include <QDialog>
 #include <QThread>
 
-#include "qcustomplot.h"
+#include <QGraphicsView>
+#include <QGraphicsScene>
+#include <QtCharts>
+
+//#include "qcustomplot.h"
 #include "workerDataSearch.h"
 
 
@@ -31,6 +35,8 @@ private slots:
 
     void reject();
 
+    void on_graphWidget_rubberBandChanged(const QRect &viewportRect, const QPointF &fromScenePoint, const QPointF &toScenePoint);
+
 public slots:
 
     void results_in(comms::returnArgs vals);
@@ -43,14 +49,7 @@ private:
     QThread* thread=new QThread(this);
     workerDataSearch* worker=new workerDataSearch;
 
-
     dataStorage* storePtr=NULL;
-
-    QCPBars* maxBars=NULL;
-    QCPGraph* maxGraph=NULL;
-    QCPGraph* medGraph=NULL;
-    QCPGraph* minGraph=NULL;
-
 };
 
 #endif // winVisual_H

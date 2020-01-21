@@ -7,12 +7,7 @@ winVisual::winVisual(QWidget *parent, dataStorage *storePtr) :
     ui->setupUi(this);
     ui->calendar->setMaximumDate(HIGHTEST_DATE.date());
     ui->calendar->setMinimumDate(LOWEST_DATE.date());
-
-    maxBars=new QCPBars(ui->graphWidget->xAxis,ui->graphWidget->yAxis);
-    maxGraph=new QCPGraph(ui->graphWidget->xAxis,ui->graphWidget->yAxis);
-    medGraph=new QCPGraph(ui->graphWidget->xAxis,ui->graphWidget->yAxis);
-    minGraph=new QCPGraph(ui->graphWidget->xAxis,ui->graphWidget->yAxis);
-
+    
     worker->moveToThread(thread);
 
     connect(thread,SIGNAL(started()),worker,SLOT(start()));
@@ -25,16 +20,9 @@ winVisual::~winVisual()
     delete ui;
     delete worker;
 
-    delete maxBars;
-    delete maxGraph;
-    delete medGraph;
-    delete minGraph;
-
+    if(ui->graphWidget->chart() != NULL)
+        delete ui->graphWidget->chart();
 }
-
-
-//funzione per calcolo dei parametri per il grafico
-
 
 void winVisual::on_confirm_clicked(){
     ui->warnsBox->clear();
@@ -52,7 +40,6 @@ void winVisual::on_confirm_clicked(){
     case scan_timeSpan::WEEK:
     case scan_timeSpan::DAY:
 
-        //startDate.setDate(ui->calendar->selectedDate());
         startDate.setDate(QDate(ui->calendar->selectedDate().year(),ui->calendar->selectedDate().month(),1));
         endDate=startDate.addMonths(1);
         break;
@@ -110,9 +97,8 @@ void winVisual::on_viewMonthly_4weeks_clicked(){
     ui->confirm->setEnabled(true);
 }
 
-//slot per ricevere messaggi dal thread
-
 void winVisual::results_in(comms::returnArgs vals){
+    
     ui->warnsBox->insertPlainText("\ndata reading completed\n");
 
     ui->totBox->setText(vals.total);
@@ -120,45 +106,47 @@ void winVisual::results_in(comms::returnArgs vals){
     ui->medBox->setText(vals.fAvg);
     ui->minBox->setText(vals.fMin);
 
-    QVector<double> tickVector;
-    for(double i=0;i<=vals.vDates.size();++i)
-        tickVector.push_back(i);
+    ui->warnsBox->insertPlainText("\nbuilding graph\n");
 
-    ui->graphWidget->xAxis->setAutoTicks(false);
-    ui->graphWidget->xAxis->setAutoTickLabels(false);
-    ui->graphWidget->xAxis->setTickVector(tickVector);
-    ui->graphWidget->xAxis->setTickVectorLabels(vals.vDates);
-    ui->graphWidget->xAxis->setTickLabelRotation(60);
-    ui->graphWidget->yAxis->setRangeLower(0);
+    //if(ui->graphWidget->chart() != NULL) delete ui->graphWidget->chart();
 
-    ui->graphWidget->xAxis->setLabel("Date");
-    ui->graphWidget->yAxis->setLabel("Water usage");
-    ui->graphWidget->legend->setVisible(true);
-    ui->graphWidget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
+    QChart* chart = new QChart();
 
-    maxBars->setName("Usage");
-    maxBars->addToLegend();
-    maxBars->setData(tickVector,vals.vMax);
+    QBarSeries* series = new QBarSeries(chart);
+    QBarSet* barMax = new QBarSet("Max",series);
+    QBarSet* barAvg = new QBarSet("Avg",series);
+    QBarSet* barMin = new QBarSet("Min",series);
 
-    maxGraph->setName("Max usage");
-    maxGraph->addToLegend();
-    maxGraph->setData(tickVector,vals.vMax);
-    maxGraph->setPen(QPen(Qt::red));
+    chart->addSeries(series);
+
+    QBarCategoryAxis *axisX = new QBarCategoryAxis(chart);
+    axisX->setTitleText("Date");
+    chart->addAxis(axisX, Qt::AlignBottom);
+    series->attachAxis(axisX);
 
 
-    medGraph->setName("Avg usage");
-    medGraph->addToLegend();
-    medGraph->setData(tickVector,vals.vAvg);
-    medGraph->setPen(QPen(Qt::green));
+    QValueAxis* axisY = new QValueAxis(chart);
+    axisY->setTitleText("Readings");
+    axisY->setRange(0,vals.fMax.toDouble());
+    chart->addAxis(axisY,Qt::AlignLeft);
+    series->attachAxis(axisY);
 
+    for(int i=0;i<vals.vDates.size();++i){
+        barMax->append(vals.vMax[i]);
+        barAvg->append(vals.vAvg[i]);
+        barMin->append(vals.vMin[i]);
 
-    minGraph->setName("Min usage");
-    minGraph->addToLegend();
-    minGraph->setData(tickVector,vals.vMin);
-    minGraph->setPen(QPen(Qt::blue));
+        axisX->append(vals.vDates[i]);
+    }
 
-    ui->graphWidget->rescaleAxes();
-    ui->graphWidget->replot();
+    series->append(barMax);
+    series->append(barAvg);
+    series->append(barMin);
+
+    chart->legend()->setVisible(true);
+    chart->legend()->setAlignment(Qt::AlignBottom);
+    ui->graphWidget->setChart(chart);
+    ui->graphWidget->setRenderHint(QPainter::Antialiasing);
 
     ui->warnsBox->insertPlainText("\ngraph creation completed!\n");
 }
@@ -173,3 +161,8 @@ void winVisual::reject(){
     }
     delete this;
 }
+
+void winVisual::on_graphWidget_rubberBandChanged(const QRect &viewportRect, const QPointF &fromScenePoint, const QPointF &toScenePoint){
+    ui->graphWidget->chart()->zoomIn(viewportRect);
+}
+
